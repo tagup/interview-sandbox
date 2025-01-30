@@ -1,0 +1,122 @@
+services:
+    mysql:
+      image: mysql:8.0
+      hostname: mysql
+      ports:
+        - "3306:3306"
+      command: [ "mysqld", "--log-bin-trust-function-creators=1" ]
+      healthcheck:
+        test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+        start_period: 1s
+        interval: 5s
+        timeout: 5s
+        retries: 55
+      environment:
+        MYSQL_ROOT_PASSWORD: sandbox
+        MYSQL_DATABASE: sandbox
+        MYSQL_USER: sandbox
+        MYSQL_PASSWORD: sandbox
+      configs:
+        - source: startup.sql
+          target: /docker-entrypoint-initdb.d/startup.sql
+
+configs:
+  startup.sql:
+    content: |
+      -- Create admin user if not exists
+      CREATE USER IF NOT EXISTS `admin` IDENTIFIED BY 'admin';
+      GRANT ALL ON *.* TO 'admin'@'%';
+      FLUSH PRIVILEGES;
+
+      -- Create users table
+      CREATE TABLE users (
+          id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          email VARCHAR(255),
+          created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+
+      -- Create transactions table
+      CREATE TABLE transactions (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          user_id INT,
+          amount DOUBLE,
+          currency VARCHAR(3),
+          subid VARCHAR(50),
+          pending BOOLEAN DEFAULT 0,
+          paid BOOLEAN DEFAULT 0,
+          created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      -- Create trigger to generate id in transactions
+      DELIMITER //
+      CREATE TRIGGER before_insert_transactions
+      BEFORE INSERT ON transactions
+      FOR EACH ROW
+      BEGIN
+          SET NEW.id = CONCAT(UNIX_TIMESTAMP(NOW()), '-', UUID());
+      END;
+      //
+      DELIMITER ;
+
+      SET GLOBAL event_scheduler = ON;
+
+      # -- Create random transactions every minute
+      # DELIMITER //
+      # CREATE EVENT create_random_transactions
+      # ON SCHEDULE EVERY 1 MINUTE
+      # DO
+      # BEGIN
+      #     DECLARE i INT DEFAULT 0;
+      #     DECLARE num_transactions INT;
+          
+      #     -- Generate a random number of transactions (between 1 and 5)
+      #     SET num_transactions = FLOOR(1 + RAND() * 5);
+
+      #     WHILE i < num_transactions DO
+      #         INSERT INTO transactions (id, user_id, amount, currency, subid, pending, paid, created)
+      #         VALUES (
+      #             CONCAT(UNIX_TIMESTAMP(NOW()), '-', UUID()), -- Generate time-based UUID
+      #             (SELECT id FROM users ORDER BY RAND() LIMIT 1), -- Random user
+      #             ROUND(RAND() * 1000, 2), -- Random amount between 0 and 1000
+      #             'USD', -- Static currency
+      #             UUID(), -- Random subid
+      #             1, -- Pending
+      #             0, -- Not paid
+      #             NOW()
+      #         );
+      #         SET i = i + 1;
+      #     END WHILE;
+      # END;
+      # //
+      # DELIMITER ;
+
+      # -- Confirm or pay random transactions every minute
+      # DELIMITER //
+      # CREATE EVENT confirm_or_pay_transactions
+      # ON SCHEDULE EVERY 1 MINUTE
+      # DO
+      # BEGIN
+      #     DECLARE num_updates INT;
+      #     DECLARE rand_days INT;
+          
+      #     -- Generate a random number of transactions to update (between 1 and 3)
+      #     SET num_updates = FLOOR(1 + RAND() * 3);
+
+      #     -- Randomly pick transactions from either within the last 30 days or older
+      #     SET rand_days = IF(RAND() < 0.5, 30, FLOOR(RAND() * 100 + 31)); 
+          
+      #     -- Update random transactions
+      #     UPDATE transactions
+      #     SET pending = 0, paid = IF(RAND() < 0.5, 1, 0) -- Randomly mark as paid or remain unpaid
+      #     WHERE id IN (
+      #         SELECT id FROM transactions
+      #         WHERE created >= NOW() - INTERVAL rand_days DAY
+      #         ORDER BY RAND()
+      #         LIMIT num_updates
+      #     );
+      # END;
+      # //
+      # DELIMITER ;
