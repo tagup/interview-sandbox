@@ -3,7 +3,7 @@
   
     "customizations": {
       "vscode": {
-        "extensions": [
+        "extensions": [d
           "ms-python.vscode-pylance", 
           "ms-python.python",
           "esbenp.prettier-vscode",
@@ -16,5 +16,11 @@
         ]
       }
     },
-      "postCreateCommand": "make setup"
-  }
+
+    "features": {
+      "docker-in-docker": "latest"
+    },
+
+    // Run setup commands after container is built
+    "postCreateCommand": "make setup"
+}
