@@ -25,7 +25,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    entrypoint: [ "sh", "-c", "sleep 5 && mysql -h mysql -u sandbox -psandbox -D sandbox -e 'CALL generate_random_transactions(CURDATE() - INTERVAL 365 DAY, CURDATE());' && exit 0" ]
+    entrypoint: [ "sh", "-c", "sleep 20 && mysql -h mysql -u sandbox -psandbox -D sandbox -e 'CALL generate_random_transactions(CURDATE() - INTERVAL 365 DAY, CURDATE());' && exit 0" ]
     restart: "no"
 
 configs:

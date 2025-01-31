@@ -1,9 +1,9 @@
 {
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
   
     "customizations": {
       "vscode": {
-        "extensions": [d
+        "extensions": [
           "ms-python.vscode-pylance", 
           "ms-python.python",
           "esbenp.prettier-vscode",
@@ -16,11 +16,6 @@
         ]
       }
     },
-
-    "features": {
-      "docker-in-docker": "latest"
-    },
-
     // Run setup commands after container is built
     "postCreateCommand": "make setup"
 }
