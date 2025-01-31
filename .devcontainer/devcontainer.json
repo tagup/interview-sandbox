@@ -15,7 +15,5 @@
           "mtxr.sqltools-driver-mysql"
         ]
       }
-    },
-    // Run setup commands after container is built
-    "postCreateCommand": "make setup"
+    }
 }
