@@ -17,6 +17,7 @@ dynamic = ["version"]
 dependencies = [
   "fastapi>=0.111.0",
   "mysql-connector-python>=8.4.0",
+  "pydantic-settings",
   "PyMySQL>=1.1.1",
   "sqlalchemy>=2.0.30",
   "uvicorn",
