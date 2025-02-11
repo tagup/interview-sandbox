@@ -3,12 +3,9 @@ import uvicorn
 from fastapi import FastAPI
 from starlette.requests import Request
 
-from sandbox.routes import router
 from sandbox.settings import DatabaseSettings
 
 app = FastAPI()
-app.include_router(router)
-
 
 @app.middleware("http")
 async def open_connection(request: Request, call_next):
