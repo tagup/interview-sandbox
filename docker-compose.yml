@@ -81,6 +81,15 @@ configs:
           UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
       ) AS numbers;
 
+      -- Change the created date
+      UPDATE users
+      SET created = DATE_SUB(
+        NOW(),
+        INTERVAL FLOOR(RAND() * (90) + 390) DAY
+      );
+      
+      DELIMITER //
+
       DELIMITER //
 
       CREATE PROCEDURE generate_random_transactions(
