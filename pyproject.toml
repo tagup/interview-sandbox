@@ -23,5 +23,8 @@ dependencies = [
   "uvicorn",
 ]
 
+[tool.hatch.envs.default]
+path = ".venv"
+
 [tool.hatch.envs.default.env-vars]
 PYTHONPATH = "src"

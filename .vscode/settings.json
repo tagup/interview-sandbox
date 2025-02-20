@@ -14,5 +14,6 @@
             "username": "sandbox",
             "password": "sandbox"
         }
-    ]
+    ],
+    "python.venvPath": ".venv",
 }

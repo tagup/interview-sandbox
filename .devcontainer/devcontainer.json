@@ -15,5 +15,7 @@
           "mtxr.sqltools-driver-mysql"
         ]
       }
-    }
+    },
+
+    "postCreateCommand": "make setup"
 }
