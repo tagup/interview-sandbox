@@ -17,5 +17,5 @@
       }
     },
 
-    "postCreateCommand": "make setup"
+    "postCreateCommand": "pip install hatch && hatch env create"
 }
