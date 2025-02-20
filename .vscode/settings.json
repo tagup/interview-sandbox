@@ -16,4 +16,5 @@
         }
     ],
     "python.venvPath": ".venv",
+    "python.defaultInterpreterPath": ".venv/"
 }
