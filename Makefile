@@ -1,6 +1,4 @@
 
-.PHONY: setup up
-setup:
-	pip install hatch && hatch env create && docker-compose up -d
+.PHONY: up
 up:
 	docker compose up -d
