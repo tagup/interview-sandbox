@@ -15,6 +15,6 @@
             "password": "sandbox"
         }
     ],
-    "python.venvPath": ".venv",
-    "python.defaultInterpreterPath": ".venv/"
+    "python.venvPath": "/workspaces/interview-sandbox/.venv",
+    "python.defaultInterpreterPath": "/workspaces/interview-sandbox/.venv"
 }
