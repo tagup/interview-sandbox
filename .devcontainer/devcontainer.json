@@ -12,7 +12,9 @@
           "ms-python.debugpy",
           "mtxr.sqltools",
           "ms-vsliveshare.vsliveshare",
-          "mtxr.sqltools-driver-mysql"
+          "mtxr.sqltools-driver-mysql",
+          "-github.copilot",
+          "-github.copilot-chat"
         ]
       }
     },

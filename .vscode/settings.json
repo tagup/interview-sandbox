@@ -16,5 +16,7 @@
         }
     ],
     "python.venvPath": "/workspaces/interview-sandbox/.venv",
-    "python.defaultInterpreterPath": "/workspaces/interview-sandbox/.venv"
+    "python.defaultInterpreterPath": "/workspaces/interview-sandbox/.venv",
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "chat.disableAIFeatures": true
 }
