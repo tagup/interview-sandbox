@@ -19,7 +19,7 @@
         ]
       }
     },
-    "build": { "dockerfile": "Dockerfile" }
+    "build": { "dockerfile": "../Dockerfile" }
     // "postCreateCommand": "pip install hatch && hatch env create"
 
   }
