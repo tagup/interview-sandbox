@@ -5,14 +5,11 @@ build-backend = "hatchling.build"
 [tool.hatch]
 root = "src"
 
-[tool.hatch.version]
-path = "src/sandbox/__init__.py"
-
 [project]
 name = "sandbox"
 description = "Sandbox for interview questions."
 requires-python = ">=3.12"
-dynamic = ["version"]
+version = "0.0.1"
 
 dependencies = [
   "fastapi>=0.111.0",

@@ -1,6 +1,5 @@
 {
-    "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
-  
+    "initializeCommand": "docker system prune --all --force",
     "customizations": {
       "vscode": {
         "extensions": [
@@ -12,10 +11,13 @@
           "ms-python.debugpy",
           "mtxr.sqltools",
           "ms-vsliveshare.vsliveshare",
-          "mtxr.sqltools-driver-mysql"
+          "mtxr.sqltools-driver-pg",
+          "-github.copilot",
+          "-github.copilot-chat"
         ]
       }
     },
-
-    "postCreateCommand": "pip install hatch && hatch env create"
-}
+    "build": { "dockerfile": "Dockerfile" },
+    "postCreateCommand": "pip install hatch && hatch env create && make up",
+    "waitFor": "postCreateCommand"
+  }

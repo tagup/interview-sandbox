@@ -1,153 +1,188 @@
 -- Create users table
 CREATE TABLE users (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255),
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE,
+    created TIMESTAMP DEFAULT NOW(),
+    updated TIMESTAMP DEFAULT NOW()
 );
+
+-- Trigger to auto-update "updated" column
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_users_timestamp
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
 
 -- Create transactions table
 CREATE TABLE transactions (
-    id VARCHAR(255) NOT NULL PRIMARY KEY,
-    user_id INT NOT NULL,
-    amount DOUBLE,
+    id TEXT PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount DOUBLE PRECISION,
     currency VARCHAR(3),
     subid VARCHAR(50),
-    pending BOOLEAN DEFAULT 1,
-    paid BOOLEAN DEFAULT 0,
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    pending BOOLEAN DEFAULT TRUE,
+    paid BOOLEAN DEFAULT FALSE,
+    created TIMESTAMP DEFAULT NOW(),
+    updated TIMESTAMP DEFAULT NOW()
 );
 
--- Create trigger to generate id in transactions
-DELIMITER //
-CREATE TRIGGER before_insert_transactions
+CREATE TRIGGER trg_update_transactions_timestamp
+BEFORE UPDATE ON transactions
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+
+-- Function to generate transaction IDs
+CREATE OR REPLACE FUNCTION generate_transaction_id()
+RETURNS TEXT AS $$
+BEGIN
+    RETURN CONCAT(EXTRACT(EPOCH FROM NOW())::BIGINT, '-', gen_random_uuid()::TEXT);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- BEFORE INSERT trigger to populate transaction ID if not provided
+CREATE OR REPLACE FUNCTION before_insert_transactions()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.id IS NULL THEN
+        NEW.id := generate_transaction_id();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_before_insert_transactions
 BEFORE INSERT ON transactions
 FOR EACH ROW
-BEGIN
-    SET NEW.id = CONCAT(UNIX_TIMESTAMP(NOW()), '-', UUID());
-END;
-//
-DELIMITER ;
+EXECUTE FUNCTION before_insert_transactions();
 
--- Enable event scheduler
-SET GLOBAL event_scheduler = ON;
 
--- Insert 15 random users (use INSERT IGNORE to avoid errors on duplicate emails)
-INSERT IGNORE INTO users (email)
+-- Insert 15 random users (ignore duplicates)
+INSERT INTO users (email)
 SELECT CONCAT('user', n, '@example.com')
-FROM (
-    SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
-    UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
-    UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
-) AS numbers;
+FROM generate_series(1, 15) AS s(n)
+ON CONFLICT (email) DO NOTHING;
 
--- Change the created date
+
+-- Randomize created dates
 UPDATE users
-SET created = DATE_SUB(
-NOW(),
-INTERVAL FLOOR(RAND() * (90) + 390) DAY
-);
+SET created = NOW() - ((FLOOR(RANDOM() * 90) + 390) * INTERVAL '1 day');
 
-DELIMITER //
 
-DELIMITER //
-
-CREATE PROCEDURE generate_random_transactions(
-    IN start_date DATETIME,
-    IN end_date DATETIME
+-- Stored procedure to generate random transactions
+CREATE OR REPLACE PROCEDURE generate_random_transactions(
+    start_date TIMESTAMP,
+    end_date TIMESTAMP
 )
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    days_range INT;
+    total_transactions INT;
+    i INT := 0;
+    random_date TIMESTAMP;
 BEGIN
-    DECLARE days_range INT;
-    DECLARE total_transactions INT;
-    DECLARE i INT DEFAULT 0;
-    DECLARE random_date DATETIME;
+    SELECT EXTRACT(DAY FROM (end_date - start_date)) INTO days_range;
+    total_transactions := days_range * 50;
 
-    -- Calculate the total number of days
-    SET days_range = DATEDIFF(end_date, start_date);
+    WHILE i < total_transactions LOOP
+        random_date := start_date + (RANDOM() * (end_date - start_date));
 
-    -- Total transactions = 50 transactions per day * number of days
-    SET total_transactions = days_range * 50;
-
-    WHILE i < total_transactions DO
-        -- Generate a random timestamp within the given date range
-        SET random_date = DATE_ADD(start_date, INTERVAL FLOOR(RAND() * days_range * 24 * 60 * 60) SECOND);
-
-        -- Insert transaction with a random user ID
         INSERT INTO transactions (id, user_id, amount, currency, subid, pending, paid, created)
         VALUES (
-            CONCAT(UNIX_TIMESTAMP(random_date), '-', UUID()), -- Generate time-based UUID
-            (SELECT id FROM users ORDER BY RAND() LIMIT 1), -- Assign to a random user
-            ROUND(RAND() * 1000, 2), -- Random amount between 0 and 1000
-            'USD', -- Currency
-            UUID(), -- Random subid
-            0, -- Not pending
-            IF(RAND() < 0.9, 1, 0), -- 90% paid, 10% unpaid
-            random_date -- Randomized timestamp
+            generate_transaction_id(),
+            (SELECT id FROM users ORDER BY RANDOM() LIMIT 1),
+            ROUND((RANDOM() * 1000)::DECIMAL, 2),
+            'USD',
+            gen_random_uuid()::TEXT,
+            FALSE,
+            (RANDOM() < 0.9),
+            random_date
         );
 
-        SET i = i + 1;
-    END WHILE;
+        i := i + 1;
+    END LOOP;
 END;
-//
+$$;
 
-DELIMITER ;
 
--- Create event to generate random transactions every 2 minutes
-DELIMITER //
-CREATE EVENT create_random_transactions
-ON SCHEDULE EVERY 2 MINUTE
-DO
+-- Equivalent of MySQL events (requires pg_cron or external scheduling)
+-- You can schedule these using pg_cron like:
+-- SELECT cron.schedule('*/2 * * * *', 'CALL create_random_transactions();');
+
+-- Create procedure to randomly create new transactions
+CREATE OR REPLACE PROCEDURE create_random_transactions()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    i INT := 0;
+    num_transactions INT;
 BEGIN
-    DECLARE i INT DEFAULT 0;
-    DECLARE num_transactions INT;
-    
-    -- Generate a random number of transactions (between 1 and 30)
-    SET num_transactions = FLOOR(1 + RAND() * 30);
+    num_transactions := FLOOR(1 + RANDOM() * 30);
 
-    WHILE i < num_transactions DO
+    WHILE i < num_transactions LOOP
         INSERT INTO transactions (id, user_id, amount, currency, subid, pending, paid, created)
         VALUES (
-            CONCAT(UNIX_TIMESTAMP(NOW()), '-', UUID()), -- Generate time-based UUID
-            (SELECT id FROM users ORDER BY RAND() LIMIT 1), -- Ensure a valid random user
-            ROUND(RAND() * 1000, 2), -- Random amount between 0 and 1000
-            'USD', -- Currency
-            UUID(), -- Unique subid
-            1, -- Pending
-            0, -- Not paid
+            generate_transaction_id(),
+            (SELECT id FROM users ORDER BY RANDOM() LIMIT 1),
+            ROUND((RANDOM() * 1000)::DECIMAL, 2),
+            'USD',
+            gen_random_uuid()::TEXT,
+            TRUE,
+            FALSE,
             NOW()
         );
-        SET i = i + 1;
-    END WHILE;
+        i := i + 1;
+    END LOOP;
 END;
-//
-DELIMITER ;
+$$;
 
--- Create event to confirm or pay random transactions every 2 minutes
-DELIMITER //
-CREATE EVENT confirm_or_pay_transactions
-ON SCHEDULE EVERY 2 MINUTE
-DO
+
+-- Create procedure to confirm or pay random transactions
+CREATE OR REPLACE PROCEDURE confirm_or_pay_transactions()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    num_updates INT;
+    rand_days INT;
 BEGIN
-    DECLARE num_updates INT;
-    DECLARE rand_days INT;
+    num_updates := FLOOR(1 + RANDOM() * 25);
+    rand_days := CASE WHEN RANDOM() < 0.5 THEN 30 ELSE FLOOR(RANDOM() * 100 + 31) END;
 
-    -- Generate a random number of transactions to update (between 1 and 25)
-    SET num_updates = FLOOR(1 + RAND() * 25);
-
-    -- Randomly pick transactions from either within the last 30 days or older
-    SET rand_days = IF(RAND() < 0.5, 30, FLOOR(RAND() * 100 + 31)); 
-
-    -- Update selected transactions
     UPDATE transactions
-    SET pending = 0, paid = IF(RAND() < 0.5, 1, 0)
+    SET pending = FALSE,
+        paid = (RANDOM() < 0.5)
     WHERE id IN (
         SELECT id FROM transactions
-        WHERE created >= NOW() - INTERVAL rand_days DAY
-        ORDER BY RAND()
+        WHERE created >= NOW() - (rand_days * INTERVAL '1 day')
+        ORDER BY RANDOM()
         LIMIT num_updates
     );
 END;
-//
-DELIMITER ;
+$$;
+
+
+CALL generate_random_transactions(CURRENT_DATE - INTERVAL '365 days', CURRENT_DATE);
+
+SELECT cron.schedule_in_database(
+    'create_random_transactions',
+    '*/2 * * * *',
+    $$CALL create_random_transactions();$$,
+    'sandbox'
+);
+
+SELECT cron.schedule_in_database(
+    'confirm_or_pay_transactions',
+    '*/2 * * * *',
+    $$CALL confirm_or_pay_transactions();$$,
+    'sandbox'
+)
