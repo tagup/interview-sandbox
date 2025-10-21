@@ -19,6 +19,6 @@
       }
     },
     "build": { "dockerfile": "Dockerfile" },
-    "postCreateCommand": "pip install hatch && hatch env create",
+    "postCreateCommand": "pip install hatch && hatch env create && make up",
     "waitFor": "postCreateCommand"
   }
