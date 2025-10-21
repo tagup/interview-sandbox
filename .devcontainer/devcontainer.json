@@ -1,6 +1,6 @@
 {
     // "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
-  
+    "initializeCommand": "docker system prune --all --force",
     "customizations": {
       "vscode": {
         "extensions": [
@@ -21,4 +21,5 @@
     },
     "build": { "dockerfile": "Dockerfile" }
     // "postCreateCommand": "pip install hatch && hatch env create"
-}
+
+  }
