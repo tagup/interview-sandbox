@@ -1,15 +1,12 @@
 {
     "sqltools.connections": [
         {
-            "mysqlOptions": {
-                "authProtocol": "default",
-                "enableSsl": "Disabled"
-            },
+            "ssh": "Disabled",
             "previewLimit": 50,
             "server": "localhost",
-            "port": 3306,
-            "driver": "MySQL",
-            "name": "Main",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "Sandbox",
             "database": "sandbox",
             "username": "sandbox",
             "password": "sandbox"

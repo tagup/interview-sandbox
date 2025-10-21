@@ -1,34 +1,61 @@
 services:
-  mysql:
-    image: mysql:8.0
-    hostname: mysql
+  postgres:
+    image: kartoza/postgis:17-3.5
+    hostname: postgres
+    container_name: postgres-sandbox
     ports:
-      - "3306:3306"
-    command: [ "mysqld", "--log-bin-trust-function-creators=1" ]
+      - "5432:5432"
     healthcheck:
-      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      test: ["CMD-SHELL", "pg_isready -U sandbox -d sandbox"]
       start_period: 1s
       interval: 5s
       timeout: 5s
       retries: 55
-    networks:
-      - sandbox
-    environment:
-      MYSQL_ROOT_PASSWORD: sandbox
-      MYSQL_DATABASE: sandbox
-      MYSQL_USER: sandbox
-      MYSQL_PASSWORD: sandbox
+    configs:
+      - source: postgres_conf_override
+        target: /docker-entrypoint-initdb.d/01_postgres_conf.sql
     volumes:
-      - "./startup.sql:/docker-entrypoint-initdb.d/startup.sql"
-  transaction_generator:
-    image: mysql:8.0
-    depends_on:
-      mysql:
-        condition: service_healthy
-    entrypoint: [ "sh", "-c", "sleep 20 && mysql -h mysql -u sandbox -psandbox -D sandbox -e 'CALL generate_random_transactions(CURDATE() - INTERVAL 365 DAY, CURDATE());' && exit 0" ]
-    restart: "no"
+      - "./startup.sql:/docker-entrypoint-initdb.d/02_db-setup.sql"
+    environment: &postgres-creds
+      POSTGRES_DB: sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: sandbox
+      POSTGRES_MULTIPLE_EXTENSIONS: pg_cron
     networks:
       - sandbox
+
+  init-runner:
+    image: postgres:17.4
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *postgres-creds
+    configs:
+      - source: init_db.sh
+        target: /opt/start.sh
+        mode: 0700
+    command: [ "/bin/bash", "/opt/start.sh" ]
+    networks:
+      - sandbox
+
+configs:
+  postgres_conf_override:
+    content: |
+      -- Configure pg_cron to use postgres database
+      ALTER SYSTEM SET cron.database_name = 'postgres';
+      SELECT pg_reload_conf();
+
+  init_db.sh:
+    content: |
+      #!/bin/bash
+      set -e
+
+      echo "Waiting before running extension install..."
+      sleep 5
+
+      echo "Creating pg_cron extension in postgres database..."
+      psql postgresql://$$POSTGRES_USER:$$POSTGRES_PASSWORD@postgres:5432/postgres -c "CREATE EXTENSION IF NOT EXISTS pg_cron;"
+      sleep 3
 
 networks:
   sandbox:
