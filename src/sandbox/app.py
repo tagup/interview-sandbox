@@ -11,7 +11,7 @@ app = FastAPI()
 async def open_connection(request: Request, call_next):
     s = DatabaseSettings()
     uri = (
-        f"mysql+pymysql://"
+        f"postgresql+psycopg://"
         f"{s.user.get_secret_value()}:"
         f"{s.password.get_secret_value()}@"
         f"{s.host.get_secret_value()}:"

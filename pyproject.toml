@@ -13,9 +13,8 @@ version = "0.0.1"
 
 dependencies = [
   "fastapi>=0.111.0",
-  "mysql-connector-python>=8.4.0",
   "pydantic-settings",
-  "PyMySQL>=1.1.1",
+  "psycopg[binary,pool]"
   "sqlalchemy>=2.0.30",
   "uvicorn",
 ]
