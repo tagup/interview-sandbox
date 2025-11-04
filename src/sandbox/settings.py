@@ -8,5 +8,5 @@ class DatabaseSettings(BaseSettings):
     user: SecretStr = SecretStr("sandbox")
     password: SecretStr = SecretStr("sandbox")
     host: SecretStr = SecretStr("localhost")
-    port: SecretStr = SecretStr("3306")
+    port: SecretStr = SecretStr("5432")
     database_name: str = "sandbox"
