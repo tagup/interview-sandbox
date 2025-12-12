@@ -7,6 +7,7 @@ from sandbox.settings import DatabaseSettings
 
 app = FastAPI()
 
+
 @app.middleware("http")
 async def open_connection(request: Request, call_next):
     s = DatabaseSettings()
@@ -20,6 +21,17 @@ async def open_connection(request: Request, call_next):
     with sqlalchemy.create_engine(uri).connect() as connection:
         request.state.connection = connection
         return await call_next(request)
+
+
+@app.get("/transaction/{id}")
+async def get_transaction(request: Request, id: int) -> dict:
+    connection = request.state.connection
+
+    query = sqlalchemy.text("""SELECT id FROM transactions WHERE id = :id""")
+
+    _ = connection.execute(query, {"id": id}).fetchone()
+
+    return {"message": "Hello World"}
 
 
 if __name__ == "__main__":
